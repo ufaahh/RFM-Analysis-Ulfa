@@ -1,0 +1,74 @@
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+
+# Input data files are available in the read-only "../input/" directory
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
+# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
+
+import warnings
+warnings.filterwarnings('ignore')
+
+import pandas as pd 
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+df = pd.read_csv("../input/retailtransactiondata/Retail_Data_Transactions.csv")
+df
+
+data_missing_value = df.isnull().sum().reset_index()
+data_missing_value
+
+df.duplicated().sum()
+
+df=df.drop_duplicates()
+
+df.duplicated().sum()
+
+df['trans_date']=pd.to_datetime(df['trans_date'])
+
+last_date=df['trans_date'].max()
+last_date
+
+recency=df.groupby('customer_id').agg({'trans_date': 'max'}).reset_index()
+recency.columns=['customer_id','last_trans']
+recency['recency']=last_date-recency['last_trans']
+recency=recency.drop(['last_trans'],axis=1)
+
+recency['recency'] = pd.DataFrame(recency['recency'].astype('timedelta64[D]'))
+
+recency
+
+frequency=df.groupby('customer_id').agg({'tran_amount':'count'}).reset_index()
+frequency.columns=['customer_id','frequency']
+frequency
+
+monetary=df.groupby('customer_id').agg({'tran_amount': 'sum'}).reset_index()
+monetary.columns=['customer_id','monetary']
+monetary
+
+RFM=recency.merge(frequency,
+                 on='customer_id')
+RFM=RFM.merge(monetary,
+             on='customer_id')
+RFM
+
+X=RFM[['recency','frequency','monetary']]
+
+from sklearn.preprocessing import StandardScaler
+
+X_std = StandardScaler().fit_transform(X)
+RFM_std = pd.DataFrame(data = X_std, columns = ['recency','frequency','monetary'])
+RFM_std.describe()
